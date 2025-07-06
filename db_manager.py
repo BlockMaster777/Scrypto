@@ -106,7 +106,6 @@ class DBManager:
             cur = conn.cursor()
             cur.execute("SELECT username FROM users WHERE username = ?", (username,))
             res = cur.fetchone()
-            print(res)
             if not res:
                 cur.execute("INSERT INTO users(username) VALUES (?)", (username,))
             conn.commit()
