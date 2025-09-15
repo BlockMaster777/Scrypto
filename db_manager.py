@@ -8,8 +8,7 @@ import sqlite3
 class DBManager:
     def __init__(self, database):
         self.database = database
-    
-    
+
     def create_tables(self):
         conn = sqlite3.connect(self.database)
         with conn:
@@ -17,64 +16,55 @@ class DBManager:
                             "script_id"   INTEGER NOT NULL UNIQUE,
                             "name"        TEXT NOT NULL,
                             "user_id"     INTEGER NOT NULL,
-                            "description" TEXT,
+                            "description" TEXT NOT NULL,
                             "script"      TEXT NOT NULL,
                             "likes"       INTEGER NOT NULL DEFAULT 0,
                             "views"       INTEGER NOT NULL DEFAULT 0,
                             PRIMARY KEY("script_id" AUTOINCREMENT));''')
-            
+
             conn.execute('''CREATE TABLE IF NOT EXISTS "users" (
                             "id"            INTEGER NOT NULL UNIQUE,
                             "username"      TEXT NOT NULL UNIQUE,
                             PRIMARY KEY("id" AUTOINCREMENT));''')
-            
+
             conn.execute('''CREATE TABLE IF NOT EXISTS "reports" (
                             "script_id" INTEGER NOT NULL,
                             "report"    TEXT NOT NULL);''')
             conn.commit()
-    
-    
+
     def __executemany(self, sql, data):
         conn = sqlite3.connect(self.database)
         with conn:
             conn.executemany(sql, data)
             conn.commit()
-    
-    
+
     def __select_data(self, sql, data=tuple()):
         conn = sqlite3.connect(self.database)
         with conn:
             cur = conn.cursor()
             cur.execute(sql, data)
             return cur.fetchall()
-    
-    
+
     def get_script_data(self, script_id):
         return self.__select_data("SELECT script FROM scripts WHERE script_id = ?", (script_id,))[0][0]
-    
-    
+
     def get_script_name(self, script_id):
         return self.__select_data("SELECT name FROM scripts WHERE script_id = ?", (script_id,))[0][0]
-    
-    
+
     def get_script_description(self, script_id):
         return self.__select_data("SELECT description FROM scripts WHERE script_id = ?", (script_id,))[0][0]
-    
-    
+
     def get_script_author(self, script_id):
         return self.__select_data("""SELECT username FROM scripts
                                          INNER JOIN users ON users.id = scripts.user_id
                                          WHERE script_id = ?""", (script_id,))[0][0]
-    
-    
+
     def get_script_likes(self, script_id):
         return self.__select_data("""SELECT likes FROM scripts WHERE script_id = ?""", (script_id,))[0][0]
-    
-    
+
     def get_script_views(self, script_id):
         return self.__select_data("""SELECT views FROM scripts WHERE script_id = ?""", (script_id,))[0][0]
-    
-    
+
     def get_users_rating(self):
         return [row[0] for row in self.__select_data("""SELECT username
                                      FROM scripts
@@ -82,8 +72,7 @@ class DBManager:
                                      GROUP BY user_id
                                      ORDER BY (SUM(likes) * 5 + SUM(views)) DESC
                                      LIMIT 10""")]
-    
-    
+
     def get_scripts_rating(self):
         return self.__select_data("""SELECT name, script_id, username, likes, views
                                      FROM scripts
@@ -91,27 +80,34 @@ class DBManager:
                                      ORDER BY (likes * 5 + views) DESC
                                      LIMIT 10""")
 
-
     def get_user_id(self, username):
         return self.__select_data("SELECT id FROM users WHERE username = ?", (username,))[0][0]
 
-    
-    def search_scripts_by_name(self, search_query):
-        return [row[0] for row in self.__select_data("""SELECT name
+    def search_scripts(self, search_query):
+        return self.__select_data("""SELECT name, script_id, username, likes, views
                                                             FROM scripts
+                                                            INNER JOIN users ON users.id = scripts.user_id
                                                             WHERE name LIKE ?
                                                             ORDER BY (likes * 5 + views) DESC
-                                                            LIMIT 50 """, (f"%{search_query}%",))]
-    
-    
+                                                            LIMIT 20 """, (f"%{search_query}%",))
+
     def add_script(self, name, data, user_id, description):
         conn = sqlite3.connect(self.database)
         with conn:
             cur = conn.cursor()
-            cur.execute("INSERT INTO scripts(name, user_id, description, script) VALUES (?, ?, ?, ?)", (name, user_id, description, data))
+            cur.execute("INSERT INTO scripts(name, user_id, description, script) VALUES (?, ?, ?, ?)",
+                        (name, user_id, description, data))
             conn.commit()
-    
-    
+
+
+    def delete_script(self, script_id):
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM scripts WHERE script_id = ?", (script_id,))
+            conn.commit()
+
+
     def like_script(self, script_id):
         conn = sqlite3.connect(self.database)
         with conn:
@@ -119,6 +115,12 @@ class DBManager:
             cur.execute("UPDATE scripts SET likes = likes + 1 WHERE script_id = ?", (script_id,))
             conn.commit()
 
+    def view_script(self, script_id):
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE scripts SET views = views + 1 WHERE script_id = ?", (script_id,))
+            conn.commit()
 
     def register_user(self, username):
         conn = sqlite3.connect(self.database)

@@ -52,6 +52,6 @@ def test_user_id(db_manager):
     assert 1 == manager.get_user_id("User1")
 
 
-def test_search_scripts_by_name(db_manager):
+def test_search_scripts(db_manager):
     manager = db_manager
-    assert ["Name3", "Name2", "Name1"] == manager.search_scripts_by_name("Name")
+    assert [("Name3", 3), ("Name2", 2), ("Name1", 1)] == manager.search_scripts("Name")
